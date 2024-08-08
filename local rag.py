@@ -1,5 +1,5 @@
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoaders
 from langchain_community.vectorstores import Chroma
 from langchain_community import embeddings
 from langchain_community.chat_models import ChatOllama
