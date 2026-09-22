@@ -43,6 +43,20 @@ python run.py --apply "https://boards.greenhouse.io/acme/jobs/123"          # dr
 python run.py --apply "https://boards.greenhouse.io/acme/jobs/123" --submit # ATS only
 ```
 
+## Email job-alerts as a source (read-only)
+Turn the "new jobs for you" emails you already get into ranked, tailored roles.
+```bash
+export JOBHUNT_EMAIL_PASS=your_gmail_app_password   # never stored in config
+# then set sources.email.enabled: true in config.yaml
+python run.py
+```
+- **Read-only IMAP** — only fetches and parses; never sends, deletes, or marks.
+- The app password lives in an **env var**, not the repo. Only the env-var name
+  is in `config.yaml`.
+- Parses LinkedIn/Indeed/Otta/Wellfound alerts, extracts role + apply link, and
+  feeds them through the same dedupe → score → tailor → track pipeline.
+- You click apply yourself (safest — no portal-ToS risk).
+
 ## Control panel + learning loop (the "product" layer)
 ```bash
 pip install gradio && python dashboard.py     # local Cowork-style console
@@ -90,6 +104,7 @@ JobSpy for optional Indeed/Google sources.
 
 ## Layout
 - `jobhunt/sources.py`  — job fetchers (ATS, Remotive, Arbeitnow, Adzuna) + per-source health
+- `jobhunt/sources_email.py` — read job-alert emails over READ-ONLY IMAP (Gmail app password)
 - `jobhunt/matcher.py`  — semantic similarity + skill-gap analysis
 - `jobhunt/llm.py`      — Ollama scoring + keyword fallback
 - `jobhunt/tailor.py`   — truthful tailoring + faithfulness gate

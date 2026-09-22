@@ -41,6 +41,26 @@ sources:
     visa_only: false             # set true to keep only visa-sponsoring roles
     max_pages: 5
 
+  # Read job-alert emails (LinkedIn/Indeed/Otta/Wellfound...) over READ-ONLY IMAP.
+  # Gmail: create an App Password, then `export JOBHUNT_EMAIL_PASS=your_app_pw`.
+  # The password is NEVER stored here — only the env-var name is.
+  email:
+    enabled: false               # set true once user + app password are ready
+    host: "imap.gmail.com"
+    port: 993
+    user: "rosheelbaig@gmail.com"
+    password_env: "JOBHUNT_EMAIL_PASS"
+    folder: "INBOX"
+    since_days: 7
+    max_emails: 100
+    senders:                     # only parse alerts from these; [] = all recent mail
+      - "jobalerts-noreply@linkedin.com"
+      - "jobs-listings@linkedin.com"
+      - "invitations@indeed.com"
+      - "alert@indeed.com"
+      - "no-reply@otta.com"
+      - "team@hi.wellfound.com"
+
   # Optional. Free key: https://developer.adzuna.com  (leave blank to skip)
   adzuna:
     app_id: ""

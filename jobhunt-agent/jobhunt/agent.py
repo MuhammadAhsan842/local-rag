@@ -6,7 +6,7 @@ the cheap filters first.
 """
 from __future__ import annotations
 
-from . import sources, llm, matcher, tailor, outreach, tracker
+from . import sources, sources_email, llm, matcher, tailor, outreach, tracker
 from .models import Job
 from .store import load_seen, save_seen
 
@@ -28,6 +28,8 @@ def discover(cfg: dict) -> list[Job]:
         jobs += sources.arbeitnow(remote_only=an.get("remote_only", True),
                                   visa_only=an.get("visa_only", False),
                                   max_pages=an.get("max_pages", 5))
+    if s.get("email", {}).get("enabled"):
+        jobs += sources_email.fetch(s["email"])
     az = s.get("adzuna", {})
     if az.get("app_id") and az.get("app_key"):
         jobs += sources.adzuna(az["app_id"], az["app_key"], az.get("what", "AI engineer"),
