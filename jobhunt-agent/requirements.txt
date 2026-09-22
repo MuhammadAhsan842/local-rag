@@ -1,0 +1,5 @@
+requests>=2.31
+PyYAML>=6.0
+# Optional, only for the apply-assist step:
+#   pip install browser-use
+#   playwright install chromium

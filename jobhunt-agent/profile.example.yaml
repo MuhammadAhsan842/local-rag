@@ -1,0 +1,28 @@
+# Copy to profile.yaml and fill with YOUR real details.
+# Each fact is atomic and true. The tailoring engine may rephrase/reorder these
+# toward a JD, but can NEVER add anything not represented here.
+
+contact:
+  name: "Your Name"
+  email: "you@example.com"
+  phone: "+00 000 0000000"
+  location: "City, Country (or Remote)"
+  linkedin: "https://linkedin.com/in/you"
+  github: "https://github.com/you"
+
+facts:
+  - id: F1
+    source: "Acme Corp, 2023-2025"
+    text: "Built and deployed a RAG pipeline over 2M internal docs using Python, FastAPI and a Postgres+pgvector store; cut support resolution time 30%."
+  - id: F2
+    source: "Acme Corp"
+    text: "Fine-tuned a 7B open model with LoRA for domain Q&A; served via vLLM behind a Docker/Kubernetes setup handling 50 req/s."
+  - id: F3
+    source: "Side project: paperbot"
+    text: "Built an agentic paper-summarizer with tool use and self-critique loops; open-sourced, 400+ GitHub stars."
+  - id: F4
+    source: "BSc project"
+    text: "Trained a CNN image classifier in PyTorch to 94% accuracy; wrote the data pipeline and evaluation harness."
+  - id: F5
+    source: "Skills"
+    text: "Comfortable with Python, PyTorch, LLM orchestration, embeddings/vector search, prompt engineering, and MLOps basics (Docker, CI)."

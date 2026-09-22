@@ -1,0 +1,68 @@
+# -------------------------------------------------------------------------
+# jobhunt-agent config. Edit sources + filters to your target.
+# -------------------------------------------------------------------------
+
+resume_file: "resume.pdf"        # used by apply-assist to attach your resume
+tailor_top_n: 5                  # generate tailored bullets for the top N matches
+
+model:
+  chat: "qwen2.5"                # any Ollama chat model you've pulled (`ollama list`)
+  embed: "nomic-embed-text"      # `ollama pull nomic-embed-text` for semantic match
+
+sources:
+  # Company ATS boards — keyless, direct from employer. Add companies you'd target.
+  # The slug is what's in the careers URL, e.g. boards.greenhouse.io/<slug>.
+  greenhouse: ["anthropic", "openai", "databricks", "scaleai"]
+  lever: ["mistral"]
+  ashby: ["runwayml", "perplexityai"]
+
+  remotive:
+    enabled: true
+    category: "software-dev"
+    search: "AI engineer"        # server-side filter is flaky; we also filter locally
+
+  # Optional. Free key: https://developer.adzuna.com  (leave blank to skip)
+  adzuna:
+    app_id: ""
+    app_key: ""
+    what: "AI engineer"
+    where: ""                    # e.g. "London", "remote"
+    country: "gb"                # gb, us, in, au, ... (see Adzuna docs)
+
+filters:
+  title_must_include_any: ["ai", "ml", "machine learning", "llm", "applied scientist", "engineer"]
+  exclude_any: ["intern", "unpaid", "sales", "recruiter"]
+  skills_must: ["python"]
+  skills_nice: ["pytorch", "llm", "rag", "transformers", "docker"]
+
+  # --- remote-first, urgent-hunt tuning -----------------------------------
+  remote_only: true      # keep only roles detected as remote (set false to widen)
+  max_age_days: 30       # drop postings older than this (null = keep all)
+  recency_boost: 8       # +points for fresh posts so new roles surface first
+
+# Vocabulary used for deterministic skill extraction + gap analysis.
+skill_vocab:
+  - python
+  - pytorch
+  - tensorflow
+  - llm
+  - rag
+  - langchain
+  - transformers
+  - hugging face
+  - fine-tuning
+  - embeddings
+  - vector database
+  - fastapi
+  - docker
+  - kubernetes
+  - aws
+  - gcp
+  - mlops
+  - nlp
+  - computer vision
+  - sql
+  - distributed training
+  - cuda
+  - prompt engineering
+  - agents
