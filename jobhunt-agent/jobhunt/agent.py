@@ -6,7 +6,7 @@ the cheap filters first.
 """
 from __future__ import annotations
 
-from . import sources, llm, matcher, tailor, outreach
+from . import sources, llm, matcher, tailor, outreach, tracker
 from .models import Job
 from .store import load_seen, save_seen
 
@@ -137,9 +137,13 @@ def score(jobs: list[Job], profile: str, cfg: dict) -> list[Job]:
         j.reasons += (f" | vec {vector}/llm {llm_score if llm_score is not None else '—'}/kw {keyword}"
                       f" | missing: {', '.join(mr['missing_skills'][:4]) or 'none'}")
         j.tags = list(dict.fromkeys(j.tags + [f"fit:{j.fit_score}"]))
-    # freshness nudge (bounded to 100) so the newest good roles rise to the top
+    # freshness + learned-conversion nudges (bounded to 100). The conversion
+    # prior is the closed loop: sources that actually reply to you rise over time.
+    priors = tracker.conversion_priors() if cfg.get("scoring", {}).get("use_history", True) else {}
     for j in jobs:
-        j.fit_score = min(100, j.fit_score + _recency_boost(j, cfg))
+        j.fit_score = min(100, max(0, j.fit_score
+                                   + _recency_boost(j, cfg)
+                                   + tracker.conversion_boost(j, priors)))
     return sorted(jobs, key=lambda x: x.fit_score, reverse=True)
 
 
@@ -202,4 +206,9 @@ def run_pipeline(cfg: dict, profile: str, facts: list[dict], only_new: bool = Tr
     outreach_copy = outreach_top(ranked, facts, cfg, top_n)
 
     save_seen(seen | {j.key for j in jobs})
+    # persist the shortlist so the dashboard + history have it (idempotent;
+    # never downgrades a job you've already advanced past 'seen')
+    for j in ranked[: cfg.get("report_top", 25)]:
+        if tracker.stage_of(j.key) is None:
+            tracker.record(j, stage="seen")
     return {"ranked": ranked, "tailored": tailored, "outreach": outreach_copy}

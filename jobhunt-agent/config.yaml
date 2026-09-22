@@ -19,6 +19,7 @@ scoring:
     vector: 0.3
     llm: 0.6
     keyword: 0.1
+  use_history: true               # let the learned per-source reply-rate nudge ranking
 
 sources:
   # Company ATS boards — keyless, direct from employer. Add companies you'd target.

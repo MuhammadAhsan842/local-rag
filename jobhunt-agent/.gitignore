@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 seen_jobs.json
+jobhunt.db
 shortlist.md
 profile.md
 profile.yaml

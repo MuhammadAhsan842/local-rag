@@ -56,37 +56,90 @@ def _extract_json(text: str) -> dict | None:
         return None
 
 
+# JSON schema handed to Ollama so the model is *constrained* to valid output
+# instead of us parse-and-praying. (Upgrade path: Instructor/Outlines for full
+# Pydantic validation — this schema is the same contract, dependency-free.)
+_BULLETS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "bullets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fact_id": {"type": "string"},
+                    "text": {"type": "string"},
+                },
+                "required": ["fact_id", "text"],
+            },
+        }
+    },
+    "required": ["bullets"],
+}
+
+
+def _call(prompt: str, model: str) -> dict | None:
+    """One schema-constrained Ollama call. Returns parsed dict or None on failure."""
+    try:
+        r = requests.post(
+            OLLAMA_URL,
+            json={"model": model, "prompt": prompt, "stream": False,
+                  "format": _BULLETS_SCHEMA, "options": {"temperature": 0.3}},
+            timeout=180,
+        )
+        r.raise_for_status()
+        return _extract_json(r.json().get("response", "")) or {}
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def tailor(facts: list[dict], job_title: str, needs: list[str], model: str) -> dict:
     """
     Returns {"bullets": [...verified...], "dropped": N, "used_fact_ids": [...]}
     'dropped' counts bullets the faithfulness gate rejected (attempted fabrication
     or malformed grounding) — a signal worth watching.
     """
-    valid_ids = {f["id"] for f in facts}
-    prompt = TAILOR_PROMPT.format(
+    from . import eval as eval_mod  # local import avoids a cycle
+
+    fact_map = {f["id"]: f for f in facts}
+    base_prompt = TAILOR_PROMPT.format(
         facts=_facts_block(facts),
         title=job_title,
         needs=", ".join(needs) or "general AI/ML engineering",
     )
-    try:
-        r = requests.post(
-            OLLAMA_URL,
-            json={"model": model, "prompt": prompt, "stream": False,
-                  "format": "json", "options": {"temperature": 0.3}},
-            timeout=180,
-        )
-        r.raise_for_status()
-        parsed = _extract_json(r.json().get("response", "")) or {}
-    except Exception as e:  # noqa: BLE001
-        return {"bullets": [], "dropped": 0, "used_fact_ids": [], "error": str(e)}
 
-    kept, dropped = [], 0
-    for b in parsed.get("bullets", []):
-        fid, txt = b.get("fact_id"), (b.get("text") or "").strip()
-        if fid in valid_ids and txt:
-            kept.append({"fact_id": fid, "text": txt})
-        else:
-            dropped += 1  # faithfulness gate: ungrounded => discarded
+    kept, dropped, rejected_notes = [], 0, []
+    prompt = base_prompt
+    # Agentic self-correction: generate, verify each bullet with the faithfulness
+    # metric (grounding + numeric honesty + support), and if any were rejected,
+    # re-ask ONCE telling the model exactly what to fix. This is the retry/critic
+    # loop that separates an agent from a single-shot call.
+    for attempt in range(2):
+        parsed = _call(prompt, model)
+        if parsed is None:
+            if attempt == 0:
+                continue
+            return {"bullets": [], "dropped": 0, "used_fact_ids": [],
+                    "error": "model call failed"}
+        kept, dropped, rejected_notes = [], 0, []
+        for b in parsed.get("bullets", []):
+            cand = {"fact_id": b.get("fact_id"), "text": (b.get("text") or "").strip()}
+            verdict = eval_mod.evaluate_bullet(cand, fact_map)
+            if verdict["supported"] and cand["text"]:
+                kept.append(cand)
+            else:
+                dropped += 1  # faithfulness gate: ungrounded/fabricated => discarded
+                rejected_notes.append(f"- \"{cand['text'][:80]}\" ({verdict['reason']})")
+        if dropped == 0 or attempt == 1:
+            break
+        # ask again, showing what failed
+        prompt = base_prompt + (
+            "\n\nYour previous attempt had bullets REJECTED for not tracing to a "
+            "fact (no invented numbers, skills, or employers):\n"
+            + "\n".join(rejected_notes)
+            + "\nRewrite so every bullet is fully supported by its fact."
+        )
+
     return {
         "bullets": kept,
         "dropped": dropped,

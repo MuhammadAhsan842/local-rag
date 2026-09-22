@@ -43,6 +43,27 @@ python run.py --apply "https://boards.greenhouse.io/acme/jobs/123"          # dr
 python run.py --apply "https://boards.greenhouse.io/acme/jobs/123" --submit # ATS only
 ```
 
+## Control panel + learning loop (the "product" layer)
+```bash
+pip install gradio && python dashboard.py     # local Cowork-style console
+```
+- **Ranked shortlist** with fit + live **faithfulness** per role.
+- **Funnel tracking** (`jobhunt/tracker.py`, SQLite): advance a job
+  seen → applied → replied → interview → offer. Survives across runs/machines,
+  so "did I already apply?" is answered for you.
+- **Closed learning loop**: sources that actually *reply* to you earn a ranking
+  boost over time; black holes get penalized (`scoring.use_history`). The tool
+  gets better at *your* hunt every week.
+- **Apply-assist** launches from the panel (dry-run pre-fill by default).
+
+## Self-correcting, schema-hardened tailoring
+- `tailor.py` asks Ollama with a **JSON schema** (`format`), not free text —
+  fewer parse failures. (Upgrade path in code: Instructor/Outlines.)
+- **Agentic retry**: each bullet is verified by the faithfulness metric; if any
+  bullet is ungrounded or invents a number, the tailor re-asks **once** with the
+  exact rejections, then keeps only verified bullets. A real critic loop, not a
+  single shot.
+
 ## Accuracy backbone (what makes this defensibly world-class)
 Most job-bots never measure their own output. This one does.
 
@@ -73,9 +94,12 @@ JobSpy for optional Indeed/Google sources.
 - `jobhunt/llm.py`      — Ollama scoring + keyword fallback
 - `jobhunt/tailor.py`   — truthful tailoring + faithfulness gate
 - `jobhunt/outreach.py` — truthful recruiter DM + cover note (fact-grounded)
+- `jobhunt/eval.py`     — faithfulness metric (CI-gateable accuracy backbone)
+- `jobhunt/tracker.py`  — SQLite funnel + learned per-source conversion priors
 - `jobhunt/apply.py`    — Browser Use apply-assist (human-in-the-loop)
 - `jobhunt/agent.py`    — the orchestration loop
-- `run.py`             — CLI
+- `run.py`             — CLI (`--eval`, `--apply`, `--all`)
+- `dashboard.py`       — local Gradio control panel
 
 ## Urgent-hunt tuning (config.yaml → `filters`)
 - `remote_only: true`   — keep only roles detected as remote
