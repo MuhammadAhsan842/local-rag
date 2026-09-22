@@ -23,6 +23,11 @@ def discover(cfg: dict) -> list[Job]:
     if s.get("remotive", {}).get("enabled"):
         jobs += sources.remotive(search=s["remotive"].get("search", ""),
                                  category=s["remotive"].get("category", "software-dev"))
+    an = s.get("arbeitnow", {})
+    if an.get("enabled"):
+        jobs += sources.arbeitnow(remote_only=an.get("remote_only", True),
+                                  visa_only=an.get("visa_only", False),
+                                  max_pages=an.get("max_pages", 5))
     az = s.get("adzuna", {})
     if az.get("app_id") and az.get("app_key"):
         jobs += sources.adzuna(az["app_id"], az["app_key"], az.get("what", "AI engineer"),
@@ -142,6 +147,13 @@ def run_pipeline(cfg: dict, profile: str, facts: list[dict], only_new: bool = Tr
     print("→ discovering jobs...")
     jobs = discover(cfg)
     print(f"  found {len(jobs)}")
+    # surface silent failures: a board that errored vs one that's genuinely empty
+    failed = [k for k, v in sources.SOURCE_HEALTH.items() if not v["ok"]]
+    empty = [k for k, v in sources.SOURCE_HEALTH.items() if v["ok"] and v["jobs"] == 0]
+    if failed:
+        print(f"  ⚠️  {len(failed)} source(s) FAILED to fetch (check slug/network): {', '.join(failed)}")
+    if empty:
+        print(f"  · {len(empty)} source(s) returned 0 roles (genuinely empty): {', '.join(empty)}")
     jobs = dedupe(jobs)
     jobs = hard_filter(jobs, cfg)
     print(f"  {len(jobs)} after filter")

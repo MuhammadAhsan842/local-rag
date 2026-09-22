@@ -44,7 +44,7 @@ python run.py --apply "https://boards.greenhouse.io/acme/jobs/123" --submit # AT
 ```
 
 ## Layout
-- `jobhunt/sources.py`  — job fetchers (ATS, Remotive, Adzuna)
+- `jobhunt/sources.py`  — job fetchers (ATS, Remotive, Arbeitnow, Adzuna) + per-source health
 - `jobhunt/matcher.py`  — semantic similarity + skill-gap analysis
 - `jobhunt/llm.py`      — Ollama scoring + keyword fallback
 - `jobhunt/tailor.py`   — truthful tailoring + faithfulness gate

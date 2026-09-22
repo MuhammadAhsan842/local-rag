@@ -21,6 +21,14 @@ sources:
     category: "software-dev"
     search: "AI engineer"        # server-side filter is flaky; we also filter locally
 
+  # Arbeitnow — keyless, ATS-sourced, native remote + visa flags. Great for a
+  # remote-first hunt. Paginated internally (we loop safely until the last page).
+  arbeitnow:
+    enabled: true
+    remote_only: true            # only keep postings the API flags as remote
+    visa_only: false             # set true to keep only visa-sponsoring roles
+    max_pages: 5
+
   # Optional. Free key: https://developer.adzuna.com  (leave blank to skip)
   adzuna:
     app_id: ""
