@@ -9,6 +9,17 @@ model:
   chat: "qwen2.5"                # any Ollama chat model you've pulled (`ollama list`)
   embed: "nomic-embed-text"      # `ollama pull nomic-embed-text` for semantic match
 
+# Weighted hybrid fit score (Resume-Matcher pattern). Components are 0-100:
+#   vector  = semantic similarity (embeddings)
+#   llm     = local model's blunt fit judgment
+#   keyword = must/nice skill overlap
+# If a component is unavailable (e.g. Ollama down), its weight is redistributed.
+scoring:
+  weights:
+    vector: 0.3
+    llm: 0.6
+    keyword: 0.1
+
 sources:
   # Company ATS boards — keyless, direct from employer. Add companies you'd target.
   # The slug is what's in the careers URL, e.g. boards.greenhouse.io/<slug>.

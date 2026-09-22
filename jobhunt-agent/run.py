@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, report
+from jobhunt import agent, apply as apply_mod, report, eval as eval_mod
 
 
 def load_cfg() -> dict:
@@ -31,12 +31,53 @@ def load_profile() -> tuple[str, list[dict]]:
     return prof_text, facts
 
 
+def run_eval(path: str) -> None:
+    """Score the faithfulness metric against a labeled adversarial set."""
+    import json
+    import sys
+
+    data = json.loads(Path(path).read_text())
+    facts = data["facts"]
+    cases = data["cases"]
+    results = [{"bullets": c["bullets"]} for c in cases]
+    agg = eval_mod.evaluate_run(results, facts)
+
+    print(f"\nFaithfulness eval — {path}")
+    print(f"  mean faithfulness : {agg['mean_faithfulness']}")
+    print(f"  cases             : {agg['cases']}")
+    print(f"  total violations  : {agg['total_violations']}\n")
+
+    # per-case, checked against the human 'expect_supported' label
+    label_ok = True
+    for c, s in zip(cases, agg["per_case"]):
+        got_clean = s["total"] > 0 and not s["violations"]
+        expect = c.get("expect_supported")
+        mark = "?"
+        if expect is not None:
+            hit = (got_clean == expect)
+            label_ok = label_ok and hit
+            mark = "✓" if hit else "✗ MISLABELED BY METRIC"
+        print(f"  [{s['score']:.2f}] {c['name']:22} expect={expect}  {mark}")
+        for v in s["violations"]:
+            print(f"        · caught: {v['reason']}")
+
+    print(f"\n  metric matches human labels: {label_ok}")
+    # exit non-zero so CI can gate on it
+    sys.exit(0 if label_ok else 1)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true", help="re-rank all jobs, not just new")
     ap.add_argument("--apply", metavar="URL", help="apply-assist on a job URL")
     ap.add_argument("--submit", action="store_true", help="allow submit (ATS sites only)")
+    ap.add_argument("--eval", metavar="FILE", nargs="?", const="eval/faithfulness_seed.json",
+                    help="run the faithfulness eval on a labeled set and exit")
     args = ap.parse_args()
+
+    if args.eval:
+        run_eval(args.eval)
+        return
 
     cfg = load_cfg()
     prof_text, facts = load_profile()

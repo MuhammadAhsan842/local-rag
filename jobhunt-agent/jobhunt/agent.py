@@ -87,30 +87,56 @@ def _recency_boost(job: Job, cfg: dict) -> int:
     return 0
 
 
+def weighted_blend(components: dict[str, float | None], weights: dict[str, float]) -> int:
+    """
+    Weighted hybrid of 0-100 signals, renormalized over whatever is available.
+    Pattern from srbhr/Resume-Matcher-style hybrids: vector + LLM + keyword,
+    default 30/60/10. If a component is None (e.g. Ollama down), its weight is
+    redistributed across the rest so the score stays on the same 0-100 scale.
+    """
+    live = {k: v for k, v in components.items() if v is not None and weights.get(k, 0) > 0}
+    total_w = sum(weights[k] for k in live)
+    if not live or total_w <= 0:
+        return 0
+    return round(sum(components[k] * weights[k] for k in live) / total_w)
+
+
 def score(jobs: list[Job], profile: str, cfg: dict) -> list[Job]:
     m = cfg["model"]
     use_llm = llm.ollama_available(m["chat"])
     vocab = cfg.get("skill_vocab", [])
     f = cfg.get("filters", {})
+    weights = cfg.get("scoring", {}).get("weights", {"vector": 0.3, "llm": 0.6, "keyword": 0.1})
     for j in jobs:
         mr = matcher.match_report(profile, j, vocab, m["embed"])
-        j.tags = list(dict.fromkeys(j.tags + [f"fit:{mr['fit']}"]))
-        base = mr["fit"]
+        vector = round(100 * mr["similarity"])          # semantic component (0-100)
+        kw = llm.keyword_score(j, f.get("skills_must", []), f.get("skills_nice", []),
+                               f.get("exclude_any", []))
+        keyword = kw["fit_score"]
+        llm_score = None
+        res = None
         if use_llm:
             res = llm.score_with_ollama(j, profile, m["chat"])
             if res:
-                # blend model judgment with structural match
-                j.fit_score = round(0.5 * base + 0.5 * int(res.get("fit_score", base)))
-                j.reasons = res.get("reasons", mr and f"skills: {', '.join(mr['matched_skills'][:5])}")
-                j.red_flags = res.get("red_flags", "")
-                j.hook = res.get("hook", "")
-                j.reasons += f" | missing: {', '.join(mr['missing_skills'][:4]) or 'none'}"
-                continue
-        kw = llm.keyword_score(j, f.get("skills_must", []), f.get("skills_nice", []),
-                               f.get("exclude_any", []))
-        j.fit_score = round(0.5 * base + 0.5 * kw["fit_score"])
-        j.reasons = f"{kw['reasons']} | missing: {', '.join(mr['missing_skills'][:4]) or 'none'}"
-        j.red_flags = kw["red_flags"]
+                llm_score = int(res.get("fit_score", vector))
+        # hard-exclusion short-circuit stays authoritative
+        if keyword == 0 and kw["red_flags"] and "excluded term" in kw["reasons"]:
+            j.fit_score = 0
+            j.reasons = kw["reasons"]
+            j.red_flags = kw["red_flags"]
+            continue
+        j.fit_score = weighted_blend(
+            {"vector": vector, "llm": llm_score, "keyword": keyword}, weights)
+        if res:
+            j.reasons = res.get("reasons", "") or f"skills: {', '.join(mr['matched_skills'][:5])}"
+            j.red_flags = res.get("red_flags", "")
+            j.hook = res.get("hook", "")
+        else:
+            j.reasons = kw["reasons"]
+            j.red_flags = kw["red_flags"]
+        j.reasons += (f" | vec {vector}/llm {llm_score if llm_score is not None else '—'}/kw {keyword}"
+                      f" | missing: {', '.join(mr['missing_skills'][:4]) or 'none'}")
+        j.tags = list(dict.fromkeys(j.tags + [f"fit:{j.fit_score}"]))
     # freshness nudge (bounded to 100) so the newest good roles rise to the top
     for j in jobs:
         j.fit_score = min(100, j.fit_score + _recency_boost(j, cfg))

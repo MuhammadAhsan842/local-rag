@@ -1,0 +1,46 @@
+{
+  "_comment": "Adversarial labeled set for the faithfulness metric. 'expect_supported' is the human label. Run: python run.py --eval",
+  "facts": [
+    {"id": "F1", "source": "Acme", "text": "Built a RAG pipeline over 2M internal docs using Python, FastAPI and Postgres pgvector; cut support resolution time 30%."},
+    {"id": "F2", "source": "Acme", "text": "Fine-tuned a 7B open model with LoRA for domain Q&A; served via vLLM behind Docker and Kubernetes at 50 req/s."},
+    {"id": "F3", "source": "Side project", "text": "Built an agentic paper-summarizer with tool use and self-critique loops; open-sourced with 400 GitHub stars."}
+  ],
+  "cases": [
+    {
+      "name": "honest_rephrase",
+      "expect_supported": true,
+      "bullets": [
+        {"fact_id": "F1", "text": "Built a Python RAG pipeline on FastAPI and pgvector that cut support resolution time 30%."}
+      ]
+    },
+    {
+      "name": "fabricated_metric",
+      "expect_supported": false,
+      "bullets": [
+        {"fact_id": "F1", "text": "Built a RAG pipeline that cut support resolution time 80% across 5M documents."}
+      ]
+    },
+    {
+      "name": "ungrounded_factid",
+      "expect_supported": false,
+      "bullets": [
+        {"fact_id": "F9", "text": "Led a 12-person ML platform team."}
+      ]
+    },
+    {
+      "name": "hallucinated_skill",
+      "expect_supported": false,
+      "bullets": [
+        {"fact_id": "F2", "text": "Deployed real-time fraud detection on Apache Flink and Kafka streaming."}
+      ]
+    },
+    {
+      "name": "honest_multi",
+      "expect_supported": true,
+      "bullets": [
+        {"fact_id": "F2", "text": "Fine-tuned a 7B model with LoRA and served it on vLLM with Kubernetes at 50 req/s."},
+        {"fact_id": "F3", "text": "Open-sourced an agentic paper-summarizer using self-critique loops (400 stars)."}
+      ]
+    }
+  ]
+}

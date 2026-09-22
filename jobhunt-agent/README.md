@@ -43,6 +43,30 @@ python run.py --apply "https://boards.greenhouse.io/acme/jobs/123"          # dr
 python run.py --apply "https://boards.greenhouse.io/acme/jobs/123" --submit # ATS only
 ```
 
+## Accuracy backbone (what makes this defensibly world-class)
+Most job-bots never measure their own output. This one does.
+
+- **Weighted hybrid fit score** (`config.yaml → scoring.weights`): vector +
+  LLM + keyword, default **30/60/10** (Resume-Matcher pattern). If a signal is
+  unavailable (Ollama down), its weight is redistributed — score stays 0-100.
+- **Faithfulness metric** (`jobhunt/eval.py`, DeepEval-inspired, dependency-free):
+  every tailored bullet is checked for grounding, **numeric honesty** (a number
+  in a bullet must appear in the source fact — catches fabricated metrics), and
+  lexical support. Produces a 0-1 score.
+- **CI-gateable eval**: `python run.py --eval` runs an adversarial labeled set
+  (`eval/faithfulness_seed.json`) and exits non-zero if the metric disagrees
+  with the human labels — so a prompt/model change can't silently regress honesty.
+
+```bash
+python run.py --eval          # score the built-in adversarial set
+```
+
+Reference repos studied: [srbhr/Resume-Matcher](https://github.com/srbhr/Resume-Matcher)
+(hybrid scoring), [confident-ai/deepeval](https://github.com/confident-ai/deepeval)
+(faithfulness eval). Documented upgrade paths in code: Instructor/Outlines for
+schema-guaranteed JSON, DeepEval + local Ollama judge for semantic entailment,
+JobSpy for optional Indeed/Google sources.
+
 ## Layout
 - `jobhunt/sources.py`  — job fetchers (ATS, Remotive, Arbeitnow, Adzuna) + per-source health
 - `jobhunt/matcher.py`  — semantic similarity + skill-gap analysis
