@@ -103,4 +103,26 @@ $("trackBtn").onclick = async () => {
   }
 };
 
+$("applyBtn").onclick = async () => {
+  if (!currentJob) return;
+  const submit = $("allowSubmit").checked;
+  $("applyBtn").disabled = true;
+  $("applyOut").textContent = submit
+    ? "Launching Browser Use (will submit on ATS)…"
+    : "Launching Browser Use (dry-run pre-fill)…";
+  try {
+    const r = await api("/apply", { ...currentJob, submit });
+    if (r.ok) {
+      $("applyOut").innerHTML = `Done — ${r.submitted ? "submitted" : "pre-filled, review & submit in the opened browser"}`
+        + ` (${r.steps} steps).`;
+    } else {
+      $("applyOut").innerHTML = `<span class="err">${r.reason || r.error}</span>`;
+    }
+  } catch {
+    $("applyOut").innerHTML = `<span class="err">Apply failed — is the engine running? Browser Use installed?</span>`;
+  } finally {
+    $("applyBtn").disabled = false;
+  }
+};
+
 health();

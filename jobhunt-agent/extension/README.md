@@ -11,13 +11,17 @@ leaves your machine.
    (this folder)                 (../bridge.py)                (matcher/tailor/eval/tracker)
 ```
 - `content.js` reads the JD off the page (read-only — never clicks or submits).
-- The panel calls the local bridge for `/score`, `/tailor`, `/track`.
+- The panel calls the local bridge for `/score`, `/tailor`, `/track`, `/apply`.
+- **Apply-assist uses [Browser Use](https://github.com/browser-use/browser-use)**:
+  it drives a real browser with your local Ollama model to pre-fill the form
+  (dry-run stops before submit; auto-submit only on company ATS pages).
 - The engine uses your local Ollama model; no cloud, no account automation.
 
 ## Setup
 1. Start the engine (from the project root):
    ```bash
    pip install -r requirements.txt
+   pip install browser-use langchain-ollama && playwright install chromium   # for apply-assist
    cp profile.example.md profile.md && cp profile.example.yaml profile.yaml   # edit these
    python bridge.py        # serves http://127.0.0.1:8765
    ```

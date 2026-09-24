@@ -87,14 +87,9 @@ def main() -> None:
         if Path("profile.yaml").exists():
             contact = yaml.safe_load(Path("profile.yaml").read_text()).get("contact", {})
         resume_path = cfg.get("resume_file", "resume.pdf")
-        # Local model for browser control; swap to a stronger model for reliability.
-        try:
-            from browser_use import ChatOllama
-            model = ChatOllama(model=cfg["model"]["chat"])
-        except Exception as e:  # noqa: BLE001
-            print(f"browser-use/ChatOllama unavailable: {e}")
-            return
-        res = asyncio.run(apply_mod.apply(args.apply, contact, resume_path, model,
+        # Browser Use drives a real browser with a local Ollama model.
+        res = asyncio.run(apply_mod.apply(args.apply, contact, resume_path,
+                                          model_name=cfg["model"]["chat"],
                                           allow_submit=args.submit))
         print(res)
         return

@@ -24,7 +24,10 @@ from urllib.parse import urlparse
 
 import yaml
 
+import asyncio
+
 from jobhunt import agent, matcher, llm, tailor as tailor_mod, outreach, eval as eval_mod, tracker
+from jobhunt import apply as apply_mod
 from jobhunt.models import Job
 
 HOST, PORT = "127.0.0.1", 8765
@@ -110,7 +113,28 @@ def do_track(payload: dict) -> dict:
     return {"ok": True, "stage": stage, "summary": tracker.summary()}
 
 
-ROUTES = {"/score": do_score, "/tailor": do_tailor, "/track": do_track}
+def do_apply(payload: dict) -> dict:
+    """Launch Browser Use apply-assist on a job URL (dry-run pre-fill by default)."""
+    cfg = _cfg()
+    url = payload.get("url", "")
+    if not url:
+        return {"error": "no url"}
+    contact = {}
+    if Path("profile.yaml").exists():
+        contact = yaml.safe_load(Path("profile.yaml").read_text()).get("contact", {})
+    allow_submit = bool(payload.get("submit", False))
+    res = asyncio.run(apply_mod.apply(
+        url, contact, cfg.get("resume_file", "resume.pdf"),
+        model_name=cfg.get("model", {}).get("chat", "qwen2.5"),
+        allow_submit=allow_submit,
+    ))
+    if res.get("ok"):
+        job = _job_from(payload)
+        tracker.record(job, stage="applied")
+    return res
+
+
+ROUTES = {"/score": do_score, "/tailor": do_tailor, "/track": do_track, "/apply": do_apply}
 
 
 class Handler(BaseHTTPRequestHandler):

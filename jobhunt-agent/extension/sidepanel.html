@@ -89,6 +89,17 @@
         <button id="trackBtn">Save to funnel</button>
       </div>
 
+      <div class="card">
+        <strong>Apply-assist (Browser Use)</strong>
+        <div class="hint">Opens a real browser and pre-fills the form from your profile.
+          Dry-run stops before submit. Auto-submit is allowed only on company ATS pages.</div>
+        <div class="row" style="align-items:center">
+          <label class="hint"><input type="checkbox" id="allowSubmit" /> allow submit (ATS only)</label>
+          <button id="applyBtn">Pre-fill application</button>
+        </div>
+        <div id="applyOut" class="hint"></div>
+      </div>
+
       <div id="tailorOut" style="display:none">
         <div class="card">
           <div class="row" style="justify-content:space-between">

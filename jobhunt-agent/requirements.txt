@@ -1,5 +1,8 @@
 requests>=2.31
 PyYAML>=6.0
-# Optional, only for the apply-assist step:
-#   pip install browser-use
+# Optional, only for the apply-assist step (Browser Use drives a real browser
+# with your local Ollama model):
+#   pip install browser-use langchain-ollama
 #   playwright install chromium
+# Optional, only for the local dashboard:
+#   pip install gradio

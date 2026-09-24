@@ -22,6 +22,36 @@ def _is_allowed(url: str) -> bool:
     return any(dom in url for dom in ALLOWED_ATS)
 
 
+def local_model(model_name: str, base_url: str = "http://localhost:11434", num_ctx: int = 32000):
+    """
+    Build a Browser Use chat model backed by local Ollama.
+
+    Robust to both layouts: newer browser-use ships its own ChatOllama; older
+    setups use langchain-ollama. We also raise num_ctx — the Ollama default
+    context is too small for browser-use's prompts and causes the well-known
+    "Could not parse response" failures (browser-use issues #173/#220).
+    Returns None (not an exception) if no provider is importable, so callers can
+    degrade gracefully.
+    """
+    for importer in (
+        lambda: __import__("browser_use", fromlist=["ChatOllama"]).ChatOllama,
+        lambda: __import__("langchain_ollama", fromlist=["ChatOllama"]).ChatOllama,
+    ):
+        try:
+            ChatOllama = importer()
+        except Exception:  # noqa: BLE001
+            continue
+        try:
+            return ChatOllama(model=model_name, base_url=base_url, num_ctx=num_ctx)
+        except TypeError:
+            # some versions don't accept base_url/num_ctx kwargs
+            try:
+                return ChatOllama(model=model_name, num_ctx=num_ctx)
+            except TypeError:
+                return ChatOllama(model=model_name)
+    return None
+
+
 def build_task(profile_contact: dict, resume_path: str, allow_submit: bool) -> str:
     """Natural-language task for the Browser Use agent."""
     stop_rule = (
@@ -43,11 +73,11 @@ Never invent answers to screening questions. {stop_rule}"""
 
 
 async def apply(url: str, profile_contact: dict, resume_path: str,
-                model_provider, allow_submit: bool = False) -> dict:
+                model_provider=None, allow_submit: bool = False,
+                model_name: str | None = None, max_steps: int = 40) -> dict:
     """
-    model_provider: a Browser Use chat model (e.g. ChatOllama(...) for local, or a
-    stronger hosted model for reliability on the browser step — see the plan).
-    Returns a result dict; raises if browser-use isn't installed.
+    model_provider: a ready Browser Use chat model. If None, one is built from
+    `model_name` via local_model() (local Ollama). Returns a result dict.
     """
     if allow_submit and not _is_allowed(url):
         return {"ok": False, "reason": f"auto-submit blocked for non-ATS url: {url}"}
@@ -58,9 +88,15 @@ async def apply(url: str, profile_contact: dict, resume_path: str,
         return {"ok": False, "reason": "browser-use not installed. "
                 "pip install browser-use && playwright install chromium"}
 
+    if model_provider is None:
+        model_provider = local_model(model_name or "qwen2.5")
+        if model_provider is None:
+            return {"ok": False, "reason": "no local model provider available "
+                    "(install browser-use or langchain-ollama, and run `ollama serve`)"}
+
     task = build_task(profile_contact, resume_path, allow_submit and _is_allowed(url))
     agent = Agent(task=f"Go to {url}. {task}", llm=model_provider)
-    history = await agent.run(max_steps=40)
+    history = await agent.run(max_steps=max_steps)
     return {
         "ok": True,
         "url": url,
