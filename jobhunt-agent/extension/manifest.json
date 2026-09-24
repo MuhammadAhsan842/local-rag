@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "jobhunt-agent",
+  "version": "0.1.0",
+  "description": "Local, evidence-first job-hunt copilot. Scores the job you're viewing, tailors your CV truthfully, tracks your funnel — all on your machine.",
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "https://*.greenhouse.io/*",
+    "https://*.lever.co/*",
+    "https://*.ashbyhq.com/*",
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.wellfound.com/*",
+    "https://*.otta.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": { "default_title": "Open jobhunt panel" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*",
+        "https://*.ashbyhq.com/*",
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.wellfound.com/*",
+        "https://*.otta.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}

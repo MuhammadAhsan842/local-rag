@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>jobhunt-agent</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --line: #e5e7eb;
+      --accent: #4f46e5; --good: #16a34a; --warn: #d97706; --bad: #dc2626;
+      --chip: #f3f4f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#15151f; --fg:#e8e8f0; --muted:#9aa0aa; --line:#2c2c3a;
+              --accent:#8b85f5; --chip:#242433; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 13px/1.5 -apple-system, Segoe UI, Roboto, sans-serif;
+           background: var(--bg); color: var(--fg); }
+    header { padding: 12px 14px; border-bottom: 1px solid var(--line);
+             display: flex; align-items: center; gap: 8px; }
+    header h1 { font-size: 14px; margin: 0; flex: 1; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot.on { background: var(--good); } .dot.off { background: var(--bad); }
+    main { padding: 14px; }
+    button { font: inherit; border: 1px solid var(--line); background: var(--chip);
+             color: var(--fg); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button:disabled { opacity: .5; cursor: default; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .job-title { font-weight: 600; font-size: 14px; }
+    .muted { color: var(--muted); }
+    .score { font-size: 30px; font-weight: 700; }
+    .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 10px 0; }
+    .chip { display: inline-block; background: var(--chip); border-radius: 999px;
+            padding: 2px 9px; margin: 2px 3px 2px 0; font-size: 12px; }
+    .chip.gap { background: transparent; border: 1px dashed var(--warn); color: var(--warn); }
+    .bullet { margin: 6px 0; padding-left: 14px; position: relative; }
+    .bullet::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
+    blockquote { margin: 6px 0; padding: 8px 10px; background: var(--chip);
+                 border-left: 3px solid var(--accent); border-radius: 4px; white-space: pre-wrap; }
+    .faith { font-size: 12px; }
+    .faith.ok { color: var(--good); } .faith.warn { color: var(--warn); }
+    select { font: inherit; padding: 7px; border-radius: 8px; border: 1px solid var(--line);
+             background: var(--bg); color: var(--fg); }
+    .hint { font-size: 12px; color: var(--muted); }
+    .err { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <header>
+    <span id="statusDot" class="dot"></span>
+    <h1>jobhunt-agent</h1>
+    <span id="modelTag" class="muted"></span>
+  </header>
+  <main>
+    <div id="connErr" class="err" style="display:none">
+      Can't reach the local engine. Start it with <code>python bridge.py</code>.
+    </div>
+    <button id="analyze" class="primary" style="width:100%">Analyze this job</button>
+    <div class="hint">Reads the job on this tab, scores fit against your profile, and tailors truthfully. All local.</div>
+
+    <div id="results" style="display:none">
+      <div class="card">
+        <div id="jobTitle" class="job-title"></div>
+        <div id="jobCompany" class="muted"></div>
+        <div class="row" style="align-items:baseline">
+          <span id="fit" class="score"></span>
+          <span class="muted">/100 fit</span>
+          <span id="components" class="muted" style="margin-left:auto"></span>
+        </div>
+        <div id="reasons" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <strong>Matched</strong>
+        <div id="matched"></div>
+        <strong>Gap — what you're missing (honest)</strong>
+        <div id="gap"></div>
+      </div>
+
+      <div class="row">
+        <button id="tailorBtn">Tailor CV + outreach</button>
+        <select id="stage">
+          <option>seen</option><option selected>applied</option>
+          <option>replied</option><option>interview</option>
+          <option>offer</option><option>rejected</option>
+        </select>
+        <button id="trackBtn">Save to funnel</button>
+      </div>
+
+      <div id="tailorOut" style="display:none">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <strong>Tailored bullets (verified)</strong>
+            <span id="faith" class="faith"></span>
+          </div>
+          <div id="bullets"></div>
+        </div>
+        <div class="card">
+          <strong>Recruiter DM</strong>
+          <blockquote id="dm"></blockquote>
+          <strong>Cover note</strong>
+          <blockquote id="cover"></blockquote>
+        </div>
+      </div>
+      <div id="msg" class="hint"></div>
+    </div>
+  </main>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

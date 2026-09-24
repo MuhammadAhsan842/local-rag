@@ -57,6 +57,17 @@ python run.py
   feeds them through the same dedupe → score → tailor → track pipeline.
 - You click apply yourself (safest — no portal-ToS risk).
 
+## Chrome extension (in-browser panel, like Cowork)
+An MV3 side panel that reads the job you're viewing, scores it, tailors your CV
+truthfully, and saves it to your funnel — talking to a **local** bridge.
+```bash
+python bridge.py     # local engine API on 127.0.0.1:8765
+# then Chrome → chrome://extensions → Developer mode → Load unpacked → extension/
+```
+Works on Greenhouse/Lever/Ashby/LinkedIn/Indeed/Wellfound/Otta. Read-only on the
+page; you always click apply yourself. See `extension/README.md`. The bridge
+(`bridge.py`) also serves the same engine to any local tool over HTTP.
+
 ## Control panel + learning loop (the "product" layer)
 ```bash
 pip install gradio && python dashboard.py     # local Cowork-style console
