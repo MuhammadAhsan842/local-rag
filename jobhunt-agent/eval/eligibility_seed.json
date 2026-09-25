@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "name": "mercor_ml_network",
+      "remote": true,
+      "expect_apply": false,
+      "text": "Machine Learning Engineer Talent Network. Remote. Independent contractor. Fully remote. Unable to support H1-B or STEM OPT. Weekly pay on Wise."
+    },
+    {
+      "name": "mercor_agent",
+      "remote": true,
+      "expect_apply": false,
+      "text": "Agent Engineer. Contract. Remote. Short conversational AI interview about LLM agents in production."
+    },
+    {
+      "name": "jobot_no_sponsorship",
+      "remote": true,
+      "expect_apply": false,
+      "text": "AI Engineer. Fully remote. LangChain LangGraph RAG. No C2C or Sponsorship."
+    },
+    {
+      "name": "jobot_us_reside",
+      "remote": true,
+      "expect_apply": false,
+      "text": "Sr. AI Software Engineer. 100% remote. Must currently reside in the US. C# .NET."
+    },
+    {
+      "name": "jobot_onsite",
+      "remote": false,
+      "expect_apply": false,
+      "text": "AI Engineer WealthTech. In office in St. Pete, FL and would require relocation."
+    },
+    {
+      "name": "eu_remote_ai",
+      "remote": true,
+      "expect_apply": true,
+      "text": "Staff AI Engineer. Fully remote. Europe, CET. Python, LLM, RAG."
+    },
+    {
+      "name": "uk_remote",
+      "remote": true,
+      "expect_apply": true,
+      "text": "Machine Learning Engineer. Remote. London, United Kingdom. GMT."
+    },
+    {
+      "name": "us_title",
+      "remote": true,
+      "expect_apply": false,
+      "text": "AI Sales Engineer, (US). Remote. United States."
+    },
+    {
+      "name": "mercor_us_w2",
+      "remote": true,
+      "expect_apply": false,
+      "text": "Software Engineering Expert. Fully remote within the United States. W-2 employment."
+    }
+  ]
+}

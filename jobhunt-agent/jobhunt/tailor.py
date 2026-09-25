@@ -84,7 +84,8 @@ def _call(prompt: str, model: str) -> dict | None:
         r = requests.post(
             OLLAMA_URL,
             json={"model": model, "prompt": prompt, "stream": False,
-                  "format": _BULLETS_SCHEMA, "options": {"temperature": 0.3}},
+                  "think": False, "format": _BULLETS_SCHEMA,
+                  "options": {"temperature": 0.3}},
             timeout=180,
         )
         r.raise_for_status()

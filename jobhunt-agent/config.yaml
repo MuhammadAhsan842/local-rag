@@ -6,8 +6,8 @@ resume_file: "resume.pdf"        # used by apply-assist to attach your resume
 tailor_top_n: 5                  # generate tailored bullets for the top N matches
 
 model:
-  chat: "qwen2.5"                # any Ollama chat model you've pulled (`ollama list`)
-  embed: "nomic-embed-text"      # `ollama pull nomic-embed-text` for semantic match
+  chat: "qwen3.5:2b"            # best chat model that finishes on this CPU
+  embed: "nomic-embed-text:latest"
 
 # Weighted hybrid fit score (Resume-Matcher pattern). Components are 0-100:
 #   vector  = semantic similarity (embeddings)
@@ -34,9 +34,11 @@ autopilot:
 sources:
   # Company ATS boards — keyless, direct from employer. Add companies you'd target.
   # The slug is what's in the careers URL, e.g. boards.greenhouse.io/<slug>.
-  greenhouse: ["anthropic", "openai", "databricks", "scaleai"]
-  lever: ["mistral"]
-  ashby: ["runwayml", "perplexityai"]
+  # Public application forms (Greenhouse / Lever / Ashby). Each slug was checked
+  # and returned live jobs. US-located postings are still dropped by the Europe filter.
+  greenhouse: ["stabilityai", "wayve", "doctolib", "adyen", "n26", "contentful", "elastic", "gitlab", "canonical", "mozilla", "algolia", "mirakl", "trustpilot", "hellofresh", "wolt", "wise", "monzo", "gocardless", "sumup", "shifttechnology", "celonis", "typeform", "getyourguide", "trivago"]
+  lever: ["spotify", "qonto", "airalo"]
+  ashby: ["constructor", "stream", "n8n", "photoroom", "elevenlabs", "owkin", "parloa", "triggerdev", "ashby", "clera", "viktor", "alephalpha", "synthesia", "alan", "pennylane", "pleo", "mollie", "resend"]
 
   remotive:
     enabled: true
@@ -45,6 +47,18 @@ sources:
 
   # Arbeitnow — keyless, ATS-sourced, native remote + visa flags. Great for a
   # remote-first hunt. Paginated internally (we loop safely until the last page).
+  # Public job boards. names=null fetches every board in jobhunt/boards.py.
+  # These add listings to the radar. They do not auto-submit applications.
+  boards:
+    enabled: true
+    names:
+
+  # Mercor expert network. Listings are public. Applying stops at sign-in;
+  # the AI interview and work-authorization step stay with the person.
+  mercor:
+    enabled: true
+    max_details: 8
+
   arbeitnow:
     enabled: true
     remote_only: true            # only keep postings the API flags as remote
@@ -107,6 +121,7 @@ filters:
 
   # --- remote-first, urgent-hunt tuning -----------------------------------
   remote_only: true      # keep only roles detected as remote (set false to widen)
+  region: europe         # drop US-located roles; keep Europe, UK, or worldwide
   max_age_days: 30       # drop postings older than this (null = keep all)
   recency_boost: 8       # +points for fresh posts so new roles surface first
 

@@ -1,17 +1,14 @@
-"""
-Eligibility-first gating (gap #2).
+"""Hard gates that run before ranking.
 
-Research (Synapse two-phase fit; smart-jobapply-agent): embeddings *conflate
-semantically similar but incompatible roles* and *cannot enforce hard
-constraints*. So hard eligibility must run BEFORE ranking — a role you can't
-take should never occupy a top-10 slot, however similar it looks.
-
-Deterministic, dependency-free. Each check returns a reason when it rejects,
-so the shortlist can explain *why* something was dropped.
+Two checks live here:
+- check() / filter_jobs() drop seniority, visa, clearance, and location mismatches.
+- block_reason() drops roles that are not remote in Europe, the UK, or worldwide.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 # Seniority ladder detected from the title. Checked high→low; first hit wins.
 _SENIORITY_RANK = [
@@ -89,3 +86,77 @@ def filter_jobs(jobs, cfg):
         ok, reason = check(j, cfg)
         (keep if ok else dropped).append(j if ok else (j, reason))
     return keep, dropped
+
+
+# Phrases, not bare "United States". A US time-zone line is not a residency rule.
+_BLOCKS: list[tuple[str, tuple[str, ...]]] = [
+    ("us_residence", (
+        "within the united states",
+        "must currently reside in the us",
+        "must reside in the us",
+        "must live in the us",
+        "must currently reside",
+    )),
+    ("no_sponsorship", (
+        "no sponsorship",
+        "no c2c or sponsorship",
+        "without sponsorship",
+    )),
+    ("not_remote", (
+        "relocation required",
+        "would require relocation",
+        "require relocation",
+        "in-office",
+        "in office",
+        "on-site",
+        "onsite",
+    )),
+]
+
+
+_US = re.compile(
+    r"\b(united states|u\.s\.a\.?|usa)\b|\(us\)|\bus-only\b|\bus only\b|"
+    r"\b(san francisco|new york|nyc|seattle|austin|boston|los angeles|"
+    r"chicago|denver|atlanta|miami|dallas|silicon valley|california|texas)\b",
+    re.I,
+)
+_EUROPE = re.compile(
+    r"\b(europe|european|eu|emea|uk|united kingdom|ireland|germany|berlin|"
+    r"france|paris|netherlands|amsterdam|spain|portugal|lisbon|poland|"
+    r"sweden|denmark|norway|finland|belgium|austria|switzerland|italy|"
+    r"czech|romania|cet|cest|bst|gmt)\b",
+    re.I,
+)
+_WORLD = re.compile(r"\b(worldwide|anywhere|global|work from anywhere)\b", re.I)
+
+
+def block_reason(text: str, remote: bool) -> str | None:
+    """None means a remote European (or worldwide) role. Otherwise a reason code."""
+    if not remote:
+        return "not_remote"
+    low = (text or "").lower()
+    for code, phrases in _BLOCKS:
+        if any(p in low for p in phrases):
+            return code
+    us = _US.search(low) is not None
+    europe = _EUROPE.search(low) is not None
+    world = _WORLD.search(low) is not None
+    if us and not europe:
+        return "us_job"
+    if europe or world:
+        return None
+    return "not_europe"
+
+
+def evaluate_file(path: str) -> tuple[bool, list[str]]:
+    """Labeled cases: {name, text, remote, expect_apply}. Returns (ok, lines)."""
+    cases = json.loads(Path(path).read_text())["cases"]
+    lines, ok = [], True
+    for c in cases:
+        reason = block_reason(c["text"], c["remote"])
+        got = reason is None
+        hit = got == bool(c["expect_apply"])
+        ok = ok and hit
+        mark = "pass" if hit else "MISS"
+        lines.append(f"  [{mark}] {c['name']}: apply={got} reason={reason} expect={c['expect_apply']}")
+    return ok, lines

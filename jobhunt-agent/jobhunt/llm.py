@@ -77,10 +77,11 @@ def score_with_ollama(job: Job, profile: str, model: str) -> dict | None:
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
+                "think": False,            # Qwen3 reasoning burns time and breaks JSON
                 "format": "json",          # ask Ollama to constrain to JSON
                 "options": {"temperature": 0.2},
             },
-            timeout=120,
+            timeout=180,
         )
         r.raise_for_status()
         raw = r.json().get("response", "")

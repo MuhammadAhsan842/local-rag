@@ -94,7 +94,8 @@ def generate(facts: list[dict], title: str, company: str, needs: list[str],
         r = requests.post(
             OLLAMA_URL,
             json={"model": model, "prompt": prompt, "stream": False,
-                  "format": "json", "options": {"temperature": 0.4}},
+                  "think": False, "format": "json",
+                  "options": {"temperature": 0.4}},
             timeout=180,
         )
         r.raise_for_status()

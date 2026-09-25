@@ -15,7 +15,10 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot, cv_parse, portals
+from jobhunt import (
+    agent, apply as apply_mod, apply_mercor, autopilot, cv_parse, eligibility,
+    portals, report, eval as eval_mod, sources, submit_cv,
+)
 
 
 def load_cfg() -> dict:
@@ -81,6 +84,13 @@ def main() -> None:
                     help="parse a CV (PDF/DOCX/TXT) into profile.md + profile.yaml facts")
     ap.add_argument("--portals", action="store_true",
                     help="list every known job portal and how it connects, then exit")
+    ap.add_argument("--eval-eligibility", action="store_true",
+                    help="check remote-apply decisions against eval/eligibility_seed.json")
+    ap.add_argument("--apply-remote", action="store_true",
+                    help="find Mercor remote AI roles and start applications, stop at sign-in")
+    ap.add_argument("--submit-cv", action="store_true",
+                    help="open European remote AI company forms, attach resume.pdf, and submit")
+    ap.add_argument("--limit", type=int, default=3, help="max CV submissions for --submit-cv")
     args = ap.parse_args()
 
     if args.portals:
@@ -103,8 +113,68 @@ def main() -> None:
             print("  Review the facts (each must be TRUE) before running the pipeline.")
         return
 
+    if args.eval_eligibility:
+        import sys
+        ok, lines = eligibility.evaluate_file("eval/eligibility_seed.json")
+        print("Eligibility eval")
+        print("\n".join(lines))
+        print(f"  matches labels: {ok}")
+        sys.exit(0 if ok else 1)
+
     cfg = load_cfg()
     prof_text, facts = load_profile()
+
+    if args.submit_cv:
+        contact = {}
+        if Path("profile.yaml").exists():
+            contact = yaml.safe_load(Path("profile.yaml").read_text()).get("contact", {})
+        resume = cfg.get("resume_file", "resume.pdf")
+        pool = []
+        s = cfg.get("sources", {})
+        for c in s.get("greenhouse", []):
+            pool += sources.greenhouse(c)
+        for c in s.get("lever", []):
+            pool += sources.lever(c)
+        for c in s.get("ashby", []):
+            pool += sources.ashby(c)
+        must = [m.lower() for m in cfg.get("filters", {}).get("title_must_include_any", [])]
+        targets = []
+        for j in pool:
+            title = j.title.lower().replace("-", " ")
+            if must and not any(m in title for m in must):
+                continue
+            if not j.is_remote or eligibility.block_reason(j.searchable, True):
+                continue
+            targets.append(j)
+            if len(targets) >= args.limit:
+                break
+        print(f"{len(targets)} European remote company forms")
+        if not targets:
+            print("No Greenhouse, Lever, or Ashby form in this batch. Board pages cannot take the CV.")
+            return
+        for j in targets:
+            res = submit_cv.submit(j.url, contact, resume)
+            print(f"  {res.get('stage')} {j.title[:48]} {res.get('reason') or res.get('url')}")
+        return
+
+    if args.apply_remote:
+        contact = {}
+        if Path("profile.yaml").exists():
+            contact = yaml.safe_load(Path("profile.yaml").read_text()).get("contact", {})
+        mc = cfg.get("sources", {}).get("mercor", {})
+        found = sources.mercor(max_details=mc.get("max_details", 8))
+        kept = []
+        for j in found:
+            reason = eligibility.block_reason(j.searchable, j.is_remote)
+            if reason:
+                print(f"  skip {j.title[:48]} — {reason}")
+            else:
+                kept.append(j)
+        print(f"{len(kept)} remote AI roles to start (of {len(found)} fetched)")
+        for j in kept:
+            res = apply_mercor.start(j.url, contact, cfg.get("resume_file", "resume.pdf"))
+            print(f"  {res.get('stage')} {j.title[:48]} {res.get('continue_url') or res.get('reason')}")
+        return
 
     if args.apply:
         contact = {}

@@ -34,7 +34,7 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 def _embed(text: str, model: str) -> list[float] | None:
     try:
-        r = requests.post(EMBED_URL, json={"model": model, "prompt": text[:6000]}, timeout=60)
+        r = requests.post(EMBED_URL, json={"model": model, "prompt": text[:6000]}, timeout=120)
         r.raise_for_status()
         return r.json().get("embedding")
     except Exception:  # noqa: BLE001

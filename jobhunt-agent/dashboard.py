@@ -17,7 +17,8 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, tracker, tailor as tailor_mod, eval as eval_mod
+from jobhunt import agent, apply as apply_mod, sources, tracker, tailor as tailor_mod, eval as eval_mod
+from jobhunt.store import load_seen, save_seen
 
 try:
     import gradio as gr
@@ -25,6 +26,7 @@ except ImportError:  # pragma: no cover
     raise SystemExit("Dashboard needs Gradio:  pip install gradio")
 
 STAGES = ["seen", "applied", "replied", "interview", "offer", "rejected"]
+RADAR_STEPS = ["Discover", "Filter", "Score", "Tailor", "Outreach", "Done"]
 
 
 def _cfg() -> dict:
@@ -43,15 +45,63 @@ def _profile() -> tuple[str, list[dict]]:
 _STATE: dict = {"ranked": [], "tailored": {}, "outreach": {}}
 
 
+def _radar_status(current: str, note: str) -> str:
+    """Every radar step, with the active one marked. Shown before the run returns."""
+    idx = RADAR_STEPS.index(current)
+    parts = []
+    for i, name in enumerate(RADAR_STEPS):
+        if i < idx:
+            parts.append(f"✓ {name}")
+        elif i == idx:
+            parts.append(f"**→ {name}**")
+        else:
+            parts.append(name)
+    return " · ".join(parts) + (f"\n\n{note}" if note else "")
+
+
 def run_radar(only_new: bool):
+    """Yield after each stage so the panel updates while the slow steps run."""
     cfg = _cfg()
     text, facts = _profile()
+    empty = []
     if not text:
-        return [["—", "copy profile.example.md → profile.md first", "", "", ""]], "No profile.md"
-    result = agent.run_pipeline(cfg, text, facts, only_new=only_new)
-    _STATE.update(result)
-    rows = _rows(result["ranked"], result["tailored"], facts)
-    return rows, _stats()
+        yield empty, _stats(), _radar_status("Discover", "No profile.md — copy profile.example.md first.")
+        return
+
+    yield empty, _stats(), _radar_status("Discover", "Fetching boards…")
+    jobs = agent.discover(cfg)
+    failed = [k for k, v in sources.SOURCE_HEALTH.items() if not v["ok"]]
+    note = f"Found **{len(jobs)}** postings."
+    if failed:
+        note += f" Failed: {', '.join(failed)}."
+    yield empty, _stats(), _radar_status("Filter", note)
+
+    jobs = agent.dedupe(jobs)
+    jobs = agent.hard_filter(jobs, cfg)
+    seen = load_seen()
+    fresh = [j for j in jobs if j.key not in seen] if only_new else jobs
+    yield empty, _stats(), _radar_status(
+        "Score", f"**{len(jobs)}** passed filters · **{len(fresh)}** to score. Each role is a local model call.")
+
+    ranked = agent.score(fresh, text, cfg)
+    _STATE["ranked"] = ranked
+    yield _rows(ranked, {}, facts), _stats(), _radar_status(
+        "Tailor", f"Scored **{len(ranked)}**. Writing tailored bullets for the top {cfg.get('tailor_top_n', 5)}.")
+
+    top_n = cfg.get("tailor_top_n", 5)
+    tailored = agent.tailor_top(ranked, facts, cfg, top_n)
+    _STATE["tailored"] = tailored
+    yield _rows(ranked, tailored, facts), _stats(), _radar_status(
+        "Outreach", "Drafting recruiter notes…")
+
+    outreach = agent.outreach_top(ranked, facts, cfg, top_n)
+    save_seen(seen | {j.key for j in jobs})
+    for j in ranked[: cfg.get("report_top", 25)]:
+        if tracker.stage_of(j.key) is None:
+            tracker.record(j, stage="seen")
+    _STATE.update({"ranked": ranked, "tailored": tailored, "outreach": outreach})
+    yield _rows(ranked, tailored, facts), _stats(), _radar_status(
+        "Done", f"Shortlist ready · **{len(ranked)}** roles.")
 
 
 def _rows(ranked, tailored, facts):
@@ -68,9 +118,7 @@ def _rows(ranked, tailored, facts):
 
 def _stats() -> str:
     s = tracker.summary()
-    if not s:
-        return "No history yet — run the radar."
-    order = " · ".join(f"**{k}**: {s.get(k, 0)}" for k in STAGES if k in s)
+    order = " · ".join(f"**{k}**: {s.get(k, 0)}" for k in STAGES)
     priors = tracker.conversion_priors()
     pr = ", ".join(f"{k} {v:.0%}" for k, v in priors.items()) or "learning… (need ≥3 apps/source)"
     return f"{order}\n\nLearned reply-rate by source: {pr}"
@@ -135,6 +183,7 @@ def build():
             only_new = gr.Checkbox(label="Only new since last run", value=True)
             run_btn = gr.Button("↻ Run radar", variant="primary")
         stats = gr.Markdown(_stats())
+        status = gr.Markdown("Idle. Press **Run radar**.")
         table = gr.Dataframe(
             headers=["fit", "title", "company", "stage", "faithfulness", "url"],
             datatype=["number", "str", "str", "str", "str", "str"],
@@ -151,7 +200,7 @@ def build():
             apply_btn = gr.Button("Launch apply-assist", variant="stop")
             apply_out = gr.Markdown()
 
-        run_btn.click(run_radar, [only_new], [table, stats])
+        run_btn.click(run_radar, [only_new], [table, stats, status])
         mark_btn.click(set_stage, [url_in, stage_in], [stats])
         detail_btn.click(show_detail, [url_in], [detail])
         apply_btn.click(launch_apply, [url_in, submit_chk], [apply_out])

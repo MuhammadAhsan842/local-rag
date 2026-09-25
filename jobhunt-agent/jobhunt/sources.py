@@ -329,3 +329,63 @@ def adzuna(app_id: str, app_key: str, what: str, where: str = "", country: str =
             )
         time.sleep(0.4)  # be polite
     return out
+
+
+_MERCOR_AI = {"ai", "ml", "llm", "rag", "genai", "agent", "agentic", "generative"}
+_MERCOR_ROLE = {"engineer", "scientist", "developer", "network"}
+
+
+def mercor(max_details: int = 8) -> list[Job]:
+    """Remote-AI listings from Mercor's public explore page.
+
+    The index only has URLs. Detail pages are fetched for the AI-shaped slugs,
+    capped so a run cannot stall on hundreds of unrelated expert gigs.
+    """
+    import re
+
+    out: list[Job] = []
+    try:
+        import requests
+        page = requests.get(
+            "https://work.mercor.com/explore", headers=HEADERS, timeout=TIMEOUT,
+        )
+        page.raise_for_status()
+        html = page.text
+    except Exception as e:  # noqa: BLE001
+        _note("mercor", False, 0, f"explore fetch failed: {e}")
+        return out
+
+    seen, urls = set(), []
+    for list_id, slug in re.findall(r"/jobs/(list_[A-Za-z0-9_-]+)/([a-z0-9-]+)", html):
+        parts = set(slug.split("-"))
+        ai_hit = bool(parts & _MERCOR_AI) or {"machine", "learning"} <= parts
+        role_hit = bool(parts & _MERCOR_ROLE)
+        if list_id in seen or not (ai_hit and role_hit):
+            continue
+        seen.add(list_id)
+        urls.append((list_id, slug, f"https://work.mercor.com/jobs/{list_id}/{slug}"))
+        if len(urls) >= max_details:
+            break
+
+    for _list_id, slug, url in urls:
+        try:
+            import requests
+            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+            r.raise_for_status()
+            body = re.sub(r"<[^>]+>", " ", r.text)
+            body = re.sub(r"\s+", " ", body)
+        except Exception:  # noqa: BLE001
+            continue
+        title = slug.replace("-", " ").title()
+        remote = "remote" in body.lower()
+        out.append(Job(
+            source="mercor",
+            title=title,
+            company="Mercor",
+            url=url,
+            location="Remote" if remote else "",
+            tags=["remote"] if remote else [],
+            description=body[:4000],
+        ))
+    _note("mercor", True, len(out), "no AI-shaped listings" if not out else "")
+    return out

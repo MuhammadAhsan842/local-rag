@@ -6,7 +6,10 @@ the cheap filters first.
 """
 from __future__ import annotations
 
-from . import sources, sources_email, sources_rss, llm, matcher, tailor, outreach, tracker, eligibility, audit
+from . import (
+    sources, sources_email, sources_rss, boards, llm, matcher, tailor,
+    outreach, tracker, eligibility, audit,
+)
 from .models import Job
 from .store import load_seen, save_seen
 
@@ -38,6 +41,12 @@ def discover(cfg: dict) -> list[Job]:
     rss = s.get("rss", {})
     if rss.get("enabled") and rss.get("feeds"):
         jobs += sources_rss.fetch(rss["feeds"])
+    mc = s.get("mercor", {})
+    if mc.get("enabled"):
+        jobs += sources.mercor(max_details=mc.get("max_details", 8))
+    b = s.get("boards", {})
+    if b.get("enabled", True):
+        jobs += boards.fetch_enabled(b.get("names"))
     if s.get("email", {}).get("enabled"):
         jobs += sources_email.fetch(s["email"])
     az = s.get("adzuna", {})
@@ -72,9 +81,12 @@ def hard_filter(jobs: list[Job], cfg: dict) -> list[Job]:
         text = j.searchable
         if excl and any(e in text for e in excl):
             continue
-        if must and not any(m in j.title.lower() for m in must):
+        title = j.title.lower().replace("-", " ")
+        if must and not any(m in title for m in must):
             continue
         if remote_only and not j.is_remote:
+            continue
+        if eligibility.block_reason(j.searchable, j.is_remote or not remote_only):
             continue
         if max_age is not None:
             age = j.age_days
