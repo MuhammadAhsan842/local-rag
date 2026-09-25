@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot, cv_parse
+from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot, cv_parse, portals
 
 
 def load_cfg() -> dict:
@@ -79,7 +79,13 @@ def main() -> None:
                     help="with --auto-apply: actually submit (ATS only). Omit for a dry-run plan.")
     ap.add_argument("--import-cv", metavar="FILE",
                     help="parse a CV (PDF/DOCX/TXT) into profile.md + profile.yaml facts")
+    ap.add_argument("--portals", action="store_true",
+                    help="list every known job portal and how it connects, then exit")
     args = ap.parse_args()
+
+    if args.portals:
+        print(portals.summary())
+        return
 
     if args.eval:
         run_eval(args.eval)

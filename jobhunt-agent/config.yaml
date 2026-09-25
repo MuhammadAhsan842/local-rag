@@ -71,6 +71,26 @@ sources:
       - "no-reply@otta.com"
       - "team@hi.wellfound.com"
 
+  # RemoteOK — keyless JSON API, global remote roles.
+  remoteok:
+    enabled: true
+    search: "AI"                 # local keyword filter; "" = all
+
+  # Hacker News "Who is Hiring" monthly thread (keyless Algolia API).
+  hackernews:
+    enabled: true
+    remote_only: true
+    keywords: ["ai", "ml", "machine learning", "llm"]
+
+  # Generic RSS feeds — add any board that publishes one (auto-ingested).
+  rss:
+    enabled: true
+    feeds:
+      - {name: "jobspresso", url: "https://jobspresso.co/?feed=job_feed"}
+      - {name: "weworkremotely", url: "https://weworkremotely.com/categories/remote-programming-jobs.rss"}
+      - {name: "ai-jobs.net", url: "https://ai-jobs.net/feed/"}
+      # add more: Remote.co, Working Nomads, Himalayas, NoDesk (RSS URLs)
+
   # Optional. Free key: https://developer.adzuna.com  (leave blank to skip)
   adzuna:
     app_id: ""

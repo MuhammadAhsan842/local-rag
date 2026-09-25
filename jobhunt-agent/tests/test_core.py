@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from jobhunt.models import Job
 from jobhunt import agent, eligibility, eval as ev, resume_render, tracker, cv_parse
 from jobhunt.sources_email import extract_jobs_from_html
+from jobhunt import sources_rss, sources as sources_mod, portals
 
 
 def J(title, company="Co", source="greenhouse:co", url="https://boards.greenhouse.io/co/1",
@@ -130,3 +131,34 @@ def test_conversion_boost_bounds(tmp_path):
     assert priors.get("greenhouse", 0) > 0
     good = J("role 9", source="greenhouse:good")
     assert tracker.conversion_boost(good, priors) > 0
+
+
+# ---------- RSS feed parsing ----------
+def test_rss_parses_and_splits_company():
+    rss = ('<rss><channel>'
+           '<item><title>Acme: Senior AI Engineer</title>'
+           '<link>https://acme.com/1</link><description>python llm</description></item>'
+           '</channel></rss>')
+    jobs = sources_rss.parse_feed(rss, "t")
+    assert len(jobs) == 1
+    assert jobs[0].company == "Acme" and jobs[0].title == "Senior AI Engineer"
+
+
+# ---------- RemoteOK mapping (skips legal-notice element, filters) ----------
+def test_remoteok_skips_notice_and_filters(monkeypatch):
+    monkeypatch.setattr(sources_mod, "_get", lambda url, params=None: [
+        {"legal": "notice"},
+        {"position": "AI Engineer", "company": "Acme", "url": "https://r/1",
+         "tags": ["ai"], "location": "Remote"},
+        {"position": "Cook", "company": "Diner", "url": "https://r/2", "tags": ["food"]},
+    ])
+    jobs = sources_mod.remoteok(search="AI")
+    assert [j.title for j in jobs] == ["AI Engineer"]
+
+
+# ---------- portal registry ----------
+def test_portal_registry_loads_and_groups():
+    ps = portals.load()
+    assert len(ps) >= 40
+    groups = portals.by_path()
+    assert groups.get("auto") and groups.get("browser_login")

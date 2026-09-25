@@ -1,0 +1,59 @@
+# Portal registry — every European / remote AI job portal the tool knows about,
+# with how it connects. `apply_path` values:
+#   auto     -> keyless API/RSS, ingested automatically (no browser)
+#   rss      -> RSS feed (add its url under sources.rss.feeds to ingest)
+#   browser  -> pre-fill via Browser Use; you review + submit
+#   browser_login -> needs your login; assisted only, never auto-submit
+#   email    -> arrives via your job-alert emails (sources.email)
+#   manual   -> open + apply yourself; tool still scores + tailors from the URL
+portals:
+  # --- auto-ingest (live sources) ---
+  - {name: Remotive,        region: global, apply_path: auto}
+  - {name: Arbeitnow,       region: EU/DACH, apply_path: auto}
+  - {name: RemoteOK,        region: global, apply_path: auto}
+  - {name: web3.career,     region: global, apply_path: auto}
+  - {name: HackerNews WhoIsHiring, region: global, apply_path: auto}
+  - {name: Jobspresso,      region: global, apply_path: rss,  feed: "https://jobspresso.co/?feed=job_feed"}
+  - {name: We Work Remotely, region: global, apply_path: rss, feed: "https://weworkremotely.com/categories/remote-programming-jobs.rss"}
+  - {name: Working Nomads,  region: global, apply_path: rss}
+  - {name: Remote.co,       region: global, apply_path: rss}
+  - {name: NoDesk,          region: global, apply_path: email}
+  - {name: Himalayas,       region: global, apply_path: rss}
+  - {name: ai-jobs.net,     region: global, apply_path: rss,  feed: "https://ai-jobs.net/feed/"}
+
+  # --- Browser Use (assisted pre-fill; you submit) ---
+  - {name: Jobgether,       region: EU, apply_path: browser}
+  - {name: Remote Rocketship, region: global, apply_path: browser}
+  - {name: Matcha,          region: EU/remote, apply_path: browser}
+  - {name: Dynamite Jobs,   region: global, apply_path: browser}
+  - {name: Otta / Welcome to the Jungle, region: EU/UK, apply_path: browser}
+  - {name: Y Combinator WaaS, region: global, apply_path: browser}
+  - {name: The Hub,         region: Nordics, apply_path: browser}
+  - {name: EuroTechJobs,    region: EU, apply_path: browser}
+  - {name: StepStone,       region: Germany, apply_path: browser}
+  - {name: Honeypot,        region: DE/NL/AT, apply_path: browser}
+  - {name: Landing.jobs,    region: Iberia, apply_path: browser}
+  - {name: InfoJobs,        region: Spain, apply_path: browser}
+  - {name: Jobbird,         region: Netherlands, apply_path: browser}
+  - {name: Djinni,          region: CEE/Ukraine, apply_path: browser}
+  - {name: NoFluffJobs,     region: Poland/CEE, apply_path: browser}
+  - {name: JustJoin.it,     region: Poland, apply_path: browser}
+  - {name: Talent.io,       region: FR/DE, apply_path: browser}
+  - {name: WeAreDevelopers, region: DACH/EU, apply_path: browser}
+  - {name: Jobbatical,      region: EU+visa, apply_path: browser}
+
+  # --- login-gated: assisted only, never auto-submit (ban risk) ---
+  - {name: Wellfound,       region: global, apply_path: browser_login}
+  - {name: XING,            region: DACH, apply_path: browser_login}
+  - {name: LinkedIn,        region: global, apply_path: browser_login}
+  - {name: Indeed,          region: global, apply_path: browser_login}
+  - {name: Glassdoor,       region: global, apply_path: browser_login}
+
+  # --- email alerts / manual ---
+  - {name: Europe Remotely, region: EU, apply_path: email}
+  - {name: EU-Startups Jobs, region: EU, apply_path: email}
+  - {name: The Local Jobs,  region: DE/FR/SE, apply_path: manual}
+  - {name: AngelMatch,      region: global, apply_path: manual}
+  - {name: CTAIO,           region: global, apply_path: manual}
+  - {name: Kaggle Jobs,     region: global, apply_path: manual}
+  - {name: HuggingFace Jobs, region: global, apply_path: manual}

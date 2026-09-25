@@ -43,6 +43,20 @@ python run.py --apply "https://boards.greenhouse.io/acme/jobs/123"          # dr
 python run.py --apply "https://boards.greenhouse.io/acme/jobs/123" --submit # ATS only
 ```
 
+## Coverage: 40+ EU/remote portals
+```bash
+python run.py --portals     # list every known portal and how it connects
+```
+Portals connect four ways (see `portals.yaml`):
+- **auto** — keyless API/RSS, ingested with no browser: Remotive, Arbeitnow,
+  RemoteOK, web3.career, Hacker News "Who's Hiring", + any RSS feed (Jobspresso,
+  We Work Remotely, ai-jobs.net…).
+- **browser** — pre-fill via Browser Use, you submit (StepStone, Otta, Landing.jobs,
+  NoFluffJobs, JustJoin.it, Honeypot, WeAreDevelopers, Jobbatical, …).
+- **browser_login / manual / email** — assisted only where a login or ToS makes
+  automation unsafe (LinkedIn, XING, Wellfound, Indeed, Glassdoor), or via your
+  job-alert emails / manual apply.
+
 ## Email job-alerts as a source (read-only)
 Turn the "new jobs for you" emails you already get into ranked, tailored roles.
 ```bash
@@ -154,6 +168,8 @@ JobSpy for optional Indeed/Google sources.
 ## Layout
 - `jobhunt/sources.py`  — job fetchers (ATS, Remotive, Arbeitnow, Adzuna) + per-source health
 - `jobhunt/sources_email.py` — read job-alert emails over READ-ONLY IMAP (Gmail app password)
+- `jobhunt/sources_rss.py` — generic RSS/Atom feed ingest (Jobspresso, WWR, ai-jobs.net, …)
+- `jobhunt/portals.py` + `portals.yaml` — registry of 40+ EU/remote portals & how each connects
 - `jobhunt/matcher.py`  — semantic similarity + skill-gap analysis
 - `jobhunt/llm.py`      — Ollama scoring + keyword fallback
 - `jobhunt/tailor.py`   — truthful tailoring + faithfulness gate

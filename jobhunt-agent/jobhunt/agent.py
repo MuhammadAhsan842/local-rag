@@ -6,7 +6,7 @@ the cheap filters first.
 """
 from __future__ import annotations
 
-from . import sources, sources_email, llm, matcher, tailor, outreach, tracker, eligibility, audit
+from . import sources, sources_email, sources_rss, llm, matcher, tailor, outreach, tracker, eligibility, audit
 from .models import Job
 from .store import load_seen, save_seen
 
@@ -28,6 +28,16 @@ def discover(cfg: dict) -> list[Job]:
         jobs += sources.arbeitnow(remote_only=an.get("remote_only", True),
                                   visa_only=an.get("visa_only", False),
                                   max_pages=an.get("max_pages", 5))
+    ro = s.get("remoteok", {})
+    if ro.get("enabled"):
+        jobs += sources.remoteok(search=ro.get("search", ""))
+    hn = s.get("hackernews", {})
+    if hn.get("enabled"):
+        jobs += sources.hackernews_hiring(keywords=hn.get("keywords"),
+                                          remote_only=hn.get("remote_only", True))
+    rss = s.get("rss", {})
+    if rss.get("enabled") and rss.get("feeds"):
+        jobs += sources_rss.fetch(rss["feeds"])
     if s.get("email", {}).get("enabled"):
         jobs += sources_email.fetch(s["email"])
     az = s.get("adzuna", {})

@@ -222,6 +222,75 @@ def arbeitnow(remote_only: bool = True, visa_only: bool = False,
 
 
 # --------------------------------------------------------------------------- #
+# RemoteOK — keyless JSON API. First element is a legal/metadata notice.
+# --------------------------------------------------------------------------- #
+def remoteok(search: str = "") -> list[Job]:
+    data = _get("https://remoteok.com/api")
+    out: list[Job] = []
+    if data is None:
+        _note("remoteok", False, 0, "fetch failed (network/blocked)")
+        return out
+    for j in data:
+        if not isinstance(j, dict) or not j.get("position"):
+            continue  # skips the leading legal-notice element
+        title = j.get("position", "")
+        if search and search.lower() not in (title + " " + " ".join(j.get("tags", []))).lower():
+            continue
+        out.append(Job(
+            source="remoteok",
+            title=title,
+            company=j.get("company", ""),
+            url=j.get("url", "") or j.get("apply_url", ""),
+            location=j.get("location", "") or "Remote",
+            salary=(f"{j.get('salary_min')}-{j.get('salary_max')}" if j.get("salary_min") else ""),
+            tags=j.get("tags", []) or [],
+            description=j.get("description", ""),
+            published_at=j.get("date", ""),
+        ))
+    _note("remoteok", True, len(out), "no matching rows" if not out else "")
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Hacker News "Who is Hiring" — keyless Algolia API. Parse the latest monthly
+# thread's comments for roles + apply links (many point straight to ATS pages).
+# --------------------------------------------------------------------------- #
+def hackernews_hiring(keywords: list[str] | None = None, remote_only: bool = True,
+                      max_comments: int = 500) -> list[Job]:
+    import re as _re
+    kws = [k.lower() for k in (keywords or ["ai", "ml", "machine learning", "llm"])]
+    # find the most recent "Ask HN: Who is hiring?" story
+    meta = _get("https://hn.algolia.com/api/v1/search_by_date",
+                {"query": "Ask HN: Who is hiring?", "tags": "story", "hitsPerPage": 1})
+    out: list[Job] = []
+    if not meta or not meta.get("hits"):
+        _note("hackernews", False, 0, "could not find monthly thread")
+        return out
+    story_id = meta["hits"][0]["objectID"]
+    data = _get(f"https://hn.algolia.com/api/v1/items/{story_id}")
+    if not data:
+        _note("hackernews", False, 0, "thread fetch failed")
+        return out
+    url_re = _re.compile(r"https?://[^\s\"'<>]+")
+    for c in (data.get("children") or [])[:max_comments]:
+        text = (c.get("text") or "")
+        low = text.lower()
+        if not any(k in low for k in kws):
+            continue
+        if remote_only and "remote" not in low:
+            continue
+        # first line ~ the headline (Company | Role | location)
+        headline = _re.sub(r"<[^>]+>", " ", text).strip()
+        headline = _re.sub(r"\s+", " ", headline)[:140]
+        links = url_re.findall(text)
+        out.append(Job(source="hackernews", title=headline or "HN role",
+                       company=(c.get("author") or ""), url=links[0] if links else "",
+                       description=headline, published_at=str(c.get("created_at", ""))))
+    _note("hackernews", True, len(out), "no matching comments" if not out else "")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Adzuna — free key from https://developer.adzuna.com (optional)
 # --------------------------------------------------------------------------- #
 def adzuna(app_id: str, app_key: str, what: str, where: str = "", country: str = "gb",
