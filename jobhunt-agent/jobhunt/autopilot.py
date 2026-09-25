@@ -23,7 +23,7 @@ from pathlib import Path
 import yaml
 
 from . import agent, matcher, llm, tailor as tailor_mod, eval as eval_mod, tracker
-from . import apply as apply_mod
+from . import apply as apply_mod, resume_render, audit
 
 
 def _contact() -> dict:
@@ -81,20 +81,34 @@ def run(cfg: dict, profile: str, facts: list[dict], dry_run: bool = True) -> dic
         if faith["score"] < min_faith:
             entry["action"] = f"SKIPPED — faithfulness {faith['score']} < {min_faith}"
             tracker.record(j, stage="seen")
+            audit.log("autopilot_skip", **entry)
             log.append(entry)
             print(f"  · skip  [{j.fit_score}] {j.title[:40]} — low faithfulness")
             continue
 
+        # render an ATS-clean tailored CV so the SUBMITTED document carries the
+        # tailoring (gap #1) — not a static resume.pdf
+        skills = matcher.match_report(profile, j, vocab, cfg.get("model", {}).get("embed", "")).get("matched_skills", [])
+        rendered = resume_render.render(contact, tailored, facts, skills,
+                                        job_title=j.title, company=j.company,
+                                        out_base=f"out/cv_{j.key}")
+        entry["cv"] = rendered
+
         if dry_run:
             entry["action"] = "DRY-RUN — would submit"
             tracker.record(j, stage="seen")
-            print(f"  · plan  [{j.fit_score}] {j.title[:40]} @ {j.company[:20]}")
+            audit.log("autopilot_plan", **entry)
+            print(f"  · plan  [{j.fit_score}] {j.title[:40]} @ {j.company[:20]}  (cv: {rendered.get('html')})")
         else:
-            res = asyncio.run(apply_mod.apply(j.url, contact, resume,
+            # attach the tailored PDF/DOCX if we produced one, else the configured resume
+            resume_file = rendered.get("docx") or rendered.get("html") or resume
+            res = asyncio.run(apply_mod.apply(j.url, contact, resume_file,
                                               model_name=model_chat, allow_submit=True))
             ok = bool(res.get("ok") and res.get("submitted"))
             entry["action"] = "SUBMITTED" if ok else f"FAILED — {res.get('reason', res)}"
+            entry["result"] = res
             tracker.record(j, stage="applied" if ok else "seen")
+            audit.log("autopilot_apply", submitted=ok, **entry)
             print(f"  · {'sent' if ok else 'fail'}  [{j.fit_score}] {j.title[:40]} @ {j.company[:20]}")
             time.sleep(pace_s)  # be polite; don't hammer a careers site
         log.append(entry)

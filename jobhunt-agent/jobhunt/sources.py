@@ -28,14 +28,36 @@ def _note(label: str, ok: bool, njobs: int, detail: str = "") -> None:
     SOURCE_HEALTH[label] = {"ok": ok, "jobs": njobs, "detail": detail}
 
 
-def _get(url: str, params: dict | None = None) -> dict | list | None:
-    try:
-        r = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:  # noqa: BLE001 - one source failing must not kill the run
-        print(f"  ! source error: {url} -> {e}")
-        return None
+def _get(url: str, params: dict | None = None, retries: int = 3) -> dict | list | None:
+    """
+    GET with exponential backoff (gap #5): transient failures (timeouts, 429,
+    5xx) are retried; a 4xx (bad slug) fails fast. One source failing never
+    kills the run.
+    """
+    delay = 1.0
+    last = ""
+    for attempt in range(retries):
+        try:
+            r = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
+            if r.status_code == 429 or 500 <= r.status_code < 600:
+                last = f"HTTP {r.status_code}"
+                raise requests.HTTPError(last)
+            r.raise_for_status()
+            return r.json()
+        except requests.HTTPError as e:
+            # 4xx other than 429 => permanent; don't waste retries
+            code = getattr(e.response, "status_code", None)
+            if code and code != 429 and code < 500:
+                print(f"  ! source error: {url} -> HTTP {code}")
+                return None
+            last = str(e)
+        except Exception as e:  # noqa: BLE001 - network/JSON error, retry
+            last = str(e)
+        if attempt < retries - 1:
+            time.sleep(delay)
+            delay *= 2  # 1s, 2s, 4s
+    print(f"  ! source error after {retries} tries: {url} -> {last}")
+    return None
 
 
 # --------------------------------------------------------------------------- #

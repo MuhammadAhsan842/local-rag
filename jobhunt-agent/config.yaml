@@ -90,6 +90,16 @@ filters:
   max_age_days: 30       # drop postings older than this (null = keep all)
   recency_boost: 8       # +points for fresh posts so new roles surface first
 
+  # Hard eligibility — applied BEFORE ranking, so you never rank roles you
+  # can't take. Seniority ladder: intern 0, junior 1, mid 2, senior 3, lead 4,
+  # principal/staff 5, head/director 6, vp 7, chief 8.
+  eligibility:
+    min_seniority: 1     # drop internships (set 2 to also drop junior)
+    max_seniority: 5     # drop director+ roles
+    require_visa_sponsorship: false   # true => drop roles that won't sponsor
+    exclude_clearance: true            # drop roles needing security clearance
+    allowed_locations: []              # e.g. ["Germany","Berlin","EU"]; remote always passes
+
 # Vocabulary used for deterministic skill extraction + gap analysis.
 skill_vocab:
   - python

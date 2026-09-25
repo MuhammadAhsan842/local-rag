@@ -104,6 +104,29 @@ pip install gradio && python dashboard.py     # local Cowork-style console
   exact rejections, then keeps only verified bullets. A real critic loop, not a
   single shot.
 
+## Import your real CV → tailored ATS-clean CV
+```bash
+python run.py --import-cv path/to/your_cv.pdf   # -> profile.md + profile.yaml facts (review them)
+```
+- Parses PDF/DOCX/TXT into free text + atomic facts (heuristic, or LLM if Ollama up).
+- At apply time the tool **renders a tailored, single-column, ATS-safe CV**
+  (`.txt`/`.html`, `.docx` if python-docx present) from your verified bullets —
+  so the tailoring actually reaches the recruiter, not a stale static PDF.
+  Research: single-column parses ~97% vs ~71% for two-column/graphic PDFs.
+
+## Eligibility-first gating
+Hard constraints (seniority band, visa sponsorship, clearance, location) are
+applied **before** ranking (`filters.eligibility`), so roles you can't take
+never occupy a top slot. Ineligible roles are reported with the reason.
+
+## Reliability + tests
+- Every network fetch uses **exponential-backoff retry** (transient/429/5xx),
+  fails fast on 4xx.
+- Every run appends a structured **audit trail** to `runs.jsonl`
+  (discover/score/tailor/apply, with the tailored-CV paths and submit result).
+- **Test suite:** `pytest -q` (14 tests: scoring, eligibility, faithfulness,
+  dedupe, email parsing, CV render, tracker) — all green.
+
 ## Accuracy backbone (what makes this defensibly world-class)
 Most job-bots never measure their own output. This one does.
 

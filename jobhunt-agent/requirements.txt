@@ -6,3 +6,7 @@ PyYAML>=6.0
 #   playwright install chromium
 # Optional, only for the local dashboard:
 #   pip install gradio
+# Optional, for CV import (PDF/DOCX) and tailored-CV .docx output:
+#   pip install pdfminer.six python-docx
+# Dev only, to run the test suite:
+#   pip install pytest

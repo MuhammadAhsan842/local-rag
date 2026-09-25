@@ -6,7 +6,7 @@ the cheap filters first.
 """
 from __future__ import annotations
 
-from . import sources, sources_email, llm, matcher, tailor, outreach, tracker
+from . import sources, sources_email, llm, matcher, tailor, outreach, tracker, eligibility, audit
 from .models import Job
 from .store import load_seen, save_seen
 
@@ -188,7 +188,14 @@ def run_pipeline(cfg: dict, profile: str, facts: list[dict], only_new: bool = Tr
         print(f"  · {len(empty)} source(s) returned 0 roles (genuinely empty): {', '.join(empty)}")
     jobs = dedupe(jobs)
     jobs = hard_filter(jobs, cfg)
-    print(f"  {len(jobs)} after filter")
+    # eligibility-first: drop roles you can't take BEFORE ranking (gap #2)
+    jobs, rejected = eligibility.filter_jobs(jobs, cfg)
+    if rejected:
+        print(f"  {len(rejected)} dropped as ineligible "
+              f"(e.g. {rejected[0][1]})")
+    print(f"  {len(jobs)} after filter + eligibility")
+    audit.log("discover", found=len(jobs), ineligible=len(rejected),
+              sources={k: v["jobs"] for k, v in sources.SOURCE_HEALTH.items()})
 
     seen = load_seen()
     if only_new:

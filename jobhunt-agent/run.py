@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot
+from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot, cv_parse
 
 
 def load_cfg() -> dict:
@@ -77,10 +77,24 @@ def main() -> None:
                     help="batch auto-apply on ATS roles above the fit floor (dry-run unless --go)")
     ap.add_argument("--go", action="store_true",
                     help="with --auto-apply: actually submit (ATS only). Omit for a dry-run plan.")
+    ap.add_argument("--import-cv", metavar="FILE",
+                    help="parse a CV (PDF/DOCX/TXT) into profile.md + profile.yaml facts")
     args = ap.parse_args()
 
     if args.eval:
         run_eval(args.eval)
+        return
+
+    if args.import_cv:
+        cfg = load_cfg()
+        res = cv_parse.parse_to_profile(args.import_cv,
+                                        model=cfg.get("model", {}).get("chat"),
+                                        use_llm=True)
+        if res.get("error"):
+            print(f"! {res['error']}")
+        else:
+            print(f"✓ imported CV: {res['facts']} facts -> {res['yaml']}, text -> {res['md']}")
+            print("  Review the facts (each must be TRUE) before running the pipeline.")
         return
 
     cfg = load_cfg()
