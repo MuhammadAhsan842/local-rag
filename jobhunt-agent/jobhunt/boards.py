@@ -250,6 +250,23 @@ def _getonbrd(name: str, params: dict) -> list[Job]:
     return out
 
 
+def _places(locs) -> str:
+    """Turn a location list of strings or {country, continent, ...} objects into text."""
+    if isinstance(locs, str):
+        return locs
+    if isinstance(locs, dict):
+        locs = [locs]
+    if not isinstance(locs, list):
+        return str(locs or "")
+    parts = []
+    for item in locs:
+        if isinstance(item, str):
+            parts.append(item)
+        elif isinstance(item, dict):
+            parts.append(item.get("country") or item.get("name") or item.get("city") or "")
+    return ", ".join(p for p in parts if p)
+
+
 def fourdayweek() -> list[Job]:
     out: list[Job] = []
     try:
@@ -261,11 +278,15 @@ def fourdayweek() -> list[Job]:
         slug = row.get("slug") or ""
         url = f"https://4dayweek.io/job/{slug}" if slug else ""
         locs = row.get("locations") or []
-        loc = ", ".join(locs) if isinstance(locs, list) else str(locs)
+        loc = _places(locs)
         if str(row.get("work_arrangement") or "").lower() == "remote":
             loc = loc or "Remote"
+        stack = row.get("stack") or []
+        skills = " ".join(
+            item.get("name", "") if isinstance(item, dict) else str(item) for item in stack
+        )
         job = _job("fourdayweek", row.get("title", ""), row.get("company_name", ""), url, loc,
-                   " ".join(row.get("stack") or []), [row.get("category") or ""],
+                   skills, [row.get("category") or ""],
                    str(row.get("salary") or ""), str(row.get("posted") or ""))
         if job:
             out.append(job)
@@ -346,5 +367,8 @@ def fetch_enabled(names: list[str] | None = None) -> list[Job]:
         if fn is None:
             _note(name, False, 0, "unknown platform")
             continue
-        jobs += fn()
+        try:
+            jobs += fn()
+        except Exception as e:  # noqa: BLE001
+            _note(name, False, 0, str(e))
     return jobs

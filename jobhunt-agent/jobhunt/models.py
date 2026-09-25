@@ -17,6 +17,19 @@ def _clean(text: Optional[str]) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _as_text(value) -> str:
+    """Coerce API values (str, dict, or nested list) into one string."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return str(value.get("name") or value.get("country") or value.get("title") or "")
+    if isinstance(value, (list, tuple)):
+        return " ".join(part for part in (_as_text(v) for v in value) if part)
+    return str(value)
+
+
 @dataclass
 class Job:
     source: str
@@ -36,10 +49,12 @@ class Job:
     hook: str = ""
 
     def __post_init__(self):
-        self.title = _clean(self.title)
-        self.company = _clean(self.company)
-        self.location = _clean(self.location)
-        self.description = _clean(self.description)
+        self.title = _clean(_as_text(self.title))
+        self.company = _clean(_as_text(self.company))
+        self.location = _clean(_as_text(self.location))
+        self.description = _clean(_as_text(self.description))
+        self.salary = _clean(_as_text(self.salary))
+        self.tags = [_clean(_as_text(t)) for t in (self.tags or []) if _clean(_as_text(t))]
 
     @property
     def key(self) -> str:
