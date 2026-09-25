@@ -15,7 +15,8 @@ Install to use this:  pip install browser-use && playwright install chromium
 """
 from __future__ import annotations
 
-ALLOWED_ATS = ("greenhouse.io", "lever.co", "ashbyhq.com", "boards.greenhouse.io")
+ALLOWED_ATS = ("greenhouse.io", "lever.co", "ashbyhq.com", "boards.greenhouse.io",
+               "workable.com", "jobs.ashbyhq.com")
 
 
 def _is_allowed(url: str) -> bool:

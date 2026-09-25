@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from jobhunt import agent, apply as apply_mod, report, eval as eval_mod
+from jobhunt import agent, apply as apply_mod, report, eval as eval_mod, autopilot
 
 
 def load_cfg() -> dict:
@@ -73,6 +73,10 @@ def main() -> None:
     ap.add_argument("--submit", action="store_true", help="allow submit (ATS sites only)")
     ap.add_argument("--eval", metavar="FILE", nargs="?", const="eval/faithfulness_seed.json",
                     help="run the faithfulness eval on a labeled set and exit")
+    ap.add_argument("--auto-apply", action="store_true",
+                    help="batch auto-apply on ATS roles above the fit floor (dry-run unless --go)")
+    ap.add_argument("--go", action="store_true",
+                    help="with --auto-apply: actually submit (ATS only). Omit for a dry-run plan.")
     args = ap.parse_args()
 
     if args.eval:
@@ -96,6 +100,14 @@ def main() -> None:
 
     if not prof_text:
         print("! No profile.md found. Copy profile.example.md -> profile.md and edit it.")
+        return
+
+    if args.auto_apply:
+        summary = autopilot.run(cfg, prof_text, facts, dry_run=not args.go)
+        print(f"\n{'SUBMITTED' if args.go else 'DRY-RUN'}: "
+              f"{summary['submitted']}/{summary['eligible']} eligible ATS roles")
+        if not args.go:
+            print("  (this was a plan; re-run with --auto-apply --go to actually submit)")
         return
 
     result = agent.run_pipeline(cfg, prof_text, facts, only_new=not args.all)

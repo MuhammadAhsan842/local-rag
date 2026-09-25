@@ -21,6 +21,16 @@ scoring:
     keyword: 0.1
   use_history: true               # let the learned per-source reply-rate nudge ranking
 
+# Batch auto-apply (the safe high-throughput lane). Auto-submits ONLY on company
+# ATS pages (Greenhouse/Lever/Ashby/Workable) — never on LinkedIn/aggregators.
+#   python run.py --auto-apply            # dry-run plan
+#   python run.py --auto-apply --go       # actually submit on ATS
+autopilot:
+  min_fit: 70                     # only apply to roles scoring >= this
+  min_faithfulness: 1.0           # never submit a CV with an unverified bullet
+  max_applies: 15                 # hard cap per run (raise as you gain confidence)
+  pace_seconds: 20                # polite delay between submissions
+
 sources:
   # Company ATS boards — keyless, direct from employer. Add companies you'd target.
   # The slug is what's in the careers URL, e.g. boards.greenhouse.io/<slug>.

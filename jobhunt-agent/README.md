@@ -57,6 +57,21 @@ python run.py
   feeds them through the same dedupe → score → tailor → track pipeline.
 - You click apply yourself (safest — no portal-ToS risk).
 
+## Batch auto-apply (high throughput, ban-safe)
+Fully automated to submission — on the lane where automation is allowed.
+```bash
+python run.py --auto-apply         # dry-run: plan + tailor, submit nothing
+python run.py --auto-apply --go    # actually submit on company ATS pages
+```
+- **Auto-submits ONLY on company ATS** (Greenhouse/Lever/Ashby/Workable). Never
+  on LinkedIn/Indeed/aggregators — automating your own account there gets it
+  banned. Those stay assisted (pre-fill, you click).
+- **Targeted volume:** applies only to roles ≥ `autopilot.min_fit`, and never
+  submits a CV whose faithfulness < `min_faithfulness` (no unverified bullet
+  ever goes out). 80 tailored applications beat 800 sprayed ones.
+- Hard `max_applies` cap, polite pacing, skips already-applied, everything
+  tracked. Dry-run by default; `--go` to submit.
+
 ## Chrome extension (in-browser panel, like Cowork)
 An MV3 side panel that reads the job you're viewing, scores it, tailors your CV
 truthfully, and saves it to your funnel — talking to a **local** bridge.
